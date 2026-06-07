@@ -111,8 +111,13 @@ pub fn main(init: std.process.Init.Minimal) void {
         else => {},
     }
 
-    if (linux.access(sys_power ++ "/state", linux.W_OK) != 0)
+    // Use open() rather than access() — access() checks real UID, so it
+    // rejects setuid-root binaries even though the actual writes would
+    // succeed. open(WRONLY) tests the effective UID instead.
+    const checkfd = linux.open(sys_power ++ "/state", .{ .ACCMODE = .WRONLY }, 0);
+    if (checkfd >= ~@as(usize, 4095))
         fatal("sleep permission denied\n");
+    _ = linux.close(@intCast(checkfd));
 
     // flock /sys/power
     const lockfd = linux.open(sys_power, .{}, 0);
