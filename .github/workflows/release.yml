@@ -1,8 +1,6 @@
 name: build
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 concurrency:
@@ -63,6 +61,9 @@ jobs:
     name: Create pre-release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
