@@ -98,8 +98,14 @@ pub fn main(init: std.process.Init.Minimal) void {
                 'S' => mode = .standby,
                 'z' => mode = .@"suspend",
                 'Z' => mode = .hibernate,
-                'R' => { mode = .hibernate; hiber_mode = .reboot; },
-                'H' => { mode = .hibernate; hiber_mode = .suspend_hybrid; },
+                'R' => {
+                    mode = .hibernate;
+                    hiber_mode = .reboot;
+                },
+                'H' => {
+                    mode = .hibernate;
+                    hiber_mode = .suspend_hybrid;
+                },
                 else => fatal("bad arg\n"),
             }
         }
