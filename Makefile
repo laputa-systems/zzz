@@ -12,3 +12,8 @@ install: zzz
 
 clean:
 	rm -f zzz
+
+lint:
+	zig ast-check zzz.zig
+
+.PHONY: lint
