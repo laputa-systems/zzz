@@ -28,20 +28,8 @@ Executable files in `/etc/zzz.d/suspend` run before the machine sleeps and
 files in `/etc/zzz.d/resume` run after it wakes. Hooks run one at a time in
 directory order; their exit status is ignored.
 
-## Build
+## Install
 
-```
-make
-make TARGET=aarch64-linux-musl CPU=cortex_a53
-make install PREFIX=/usr/local
-```
-
-`make install` installs the binary with mode 4755. `make lint` runs
-`zig ast-check` on the source.
-
-## Release
-
-The `build` workflow is dispatched manually on the default branch. It builds
-the `x86_64` and `aarch64` musl binaries, rejects dynamically linked ELF
-files, and publishes a `release-<sha>` prerelease with one zip per target and a
-`SHA256SUMS` file.
+Build with `make` and install with `make install PREFIX=/usr/local`, which
+installs the binary with mode 4755. Prebuilt static `x86_64` and `aarch64`
+binaries are published as zip archives on the releases page.
