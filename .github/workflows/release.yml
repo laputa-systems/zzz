@@ -16,7 +16,7 @@ defaults:
 jobs:
   preflight:
     name: Validate release ref
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
     outputs:
@@ -40,7 +40,7 @@ jobs:
   build:
     name: Build (${{ matrix.target }})
     needs: preflight
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 30
     permissions:
       actions: write
@@ -91,7 +91,7 @@ jobs:
   release:
     name: Create pre-release
     needs: [preflight, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     permissions:
       actions: read
