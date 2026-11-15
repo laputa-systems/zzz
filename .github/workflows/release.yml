@@ -66,13 +66,13 @@ jobs:
         id: cache-zig
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: zig-x86_64-linux-0.16.0
-          key: zig-0.16.0
+          path: zig-aarch64-linux-0.16.0
+          key: zig-0.16.0-aarch64-linux
 
       - if: steps.cache-zig.outputs.cache-hit != 'true'
         name: Download zig
-        run: curl -fsSL -o zig.tar.xz https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz && echo "70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00  zig.tar.xz" | sha256sum -c - && tar xJf zig.tar.xz
-      - run: echo "$PWD/zig-x86_64-linux-0.16.0" >> "$GITHUB_PATH"
+        run: curl -fsSL -o zig.tar.xz https://ziglang.org/download/0.16.0/zig-aarch64-linux-0.16.0.tar.xz && echo "ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17  zig.tar.xz" | sha256sum -c - && tar xJf zig.tar.xz
+      - run: echo "$PWD/zig-aarch64-linux-0.16.0" >> "$GITHUB_PATH"
 
       - run: zig version
 
