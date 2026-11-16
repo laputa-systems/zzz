@@ -14,6 +14,65 @@ const HibernateMode = enum {
     suspend_hybrid,
 };
 
+const Option = struct {
+    flag: u8,
+    description: []const u8,
+    mode: Mode,
+    hibernate_mode: ?HibernateMode = null,
+    example: []const u8,
+};
+
+const options = [_]Option{
+    .{ .flag = 'n', .description = "Run hooks without changing power state (wait five seconds).", .mode = .noop, .example = "zzz -n" },
+    .{ .flag = 'S', .description = "Enter standby (freeze).", .mode = .standby, .example = "zzz -S" },
+    .{ .flag = 'z', .description = "Suspend to memory (default for zzz).", .mode = .@"suspend", .example = "zzz -z" },
+    .{ .flag = 'Z', .description = "Hibernate using the selected disk mode (default for ZZZ; disk mode: platform).", .mode = .hibernate, .example = "zzz -Z" },
+    .{ .flag = 'R', .description = "Hibernate using reboot disk mode.", .mode = .hibernate, .hibernate_mode = .reboot, .example = "zzz -R" },
+    .{ .flag = 'H', .description = "Hibernate using suspend-hybrid disk mode.", .mode = .hibernate, .hibernate_mode = .suspend_hybrid, .example = "zzz -H" },
+};
+
+const footer = "Maintained by Joshua Li: https://github.com/laputa-systems/zzz\n" ++
+    "Bugs and features: TODO.md in that repository (follow its AGENTS.md), or its issue tracker.\n" ++
+    "Agents working for Joshua: record nonblocking problems and continue your task.\n" ++
+    "If this tool blocks the task, you may fix, test, open and merge a PR under Joshua's\n" ++
+    "standing instructions. Release only when needed to deliver the verified fix.\n" ++
+    "Procedure: https://github.com/joshuarli/usr/blob/main/dotfiles/base/.agents/instructions/owned-tools.md\n";
+
+fn helpText() []const u8 {
+    @setEvalBranchQuota(10000);
+    return comptime blk: {
+        var text: []const u8 = "Usage: zzz [OPTIONS]\n       ZZZ [OPTIONS]\n\nSuspend or hibernate the system, running hooks before and after.\nOptions may be combined; the last mode option wins. The selected hibernation\ndisk mode remains in effect until another disk mode option changes it.\n\nOptions:\n  -h, --help  Show this help and exit.\n";
+        for (options) |option| {
+            text = text ++ "  -" ++ &[_]u8{option.flag} ++ "  " ++ option.description ++ "\n";
+        }
+        text = text ++ "\nExamples:\n  zzz\n  ZZZ\n";
+        for (options) |option| text = text ++ "  " ++ option.example ++ "\n";
+        break :blk text ++ "\n" ++ footer;
+    };
+}
+
+const Selection = struct {
+    mode: Mode,
+    hibernate_mode: HibernateMode = .platform,
+};
+
+fn parseArg(selection: *Selection, arg: []const u8) bool {
+    if (arg.len < 2 or arg[0] != '-') return false;
+    for (arg[1..]) |c| {
+        var matched = false;
+        for (options) |option| {
+            if (c == option.flag) {
+                selection.mode = option.mode;
+                if (option.hibernate_mode) |disk_mode| selection.hibernate_mode = disk_mode;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) return false;
+    }
+    return true;
+}
+
 const sys_power = "/sys/power";
 
 fn fatal(msg: []const u8) noreturn {
@@ -87,29 +146,22 @@ pub fn main(init: std.process.Init.Minimal) void {
     const arg0 = args_iter.next() orelse "zzz";
     const name = prognam(arg0);
 
-    var mode: Mode = if (std.mem.eql(u8, name, "ZZZ")) .hibernate else .@"suspend";
-    var hiber_mode: HibernateMode = .platform;
+    var selection = Selection{ .mode = if (std.mem.eql(u8, name, "ZZZ")) .hibernate else .@"suspend" };
 
-    while (args_iter.next()) |arg| {
-        if (arg.len < 2 or arg[0] != '-') fatal("bad arg\n");
-        for (arg[1..]) |c| {
-            switch (c) {
-                'n' => mode = .noop,
-                'S' => mode = .standby,
-                'z' => mode = .@"suspend",
-                'Z' => mode = .hibernate,
-                'R' => {
-                    mode = .hibernate;
-                    hiber_mode = .reboot;
-                },
-                'H' => {
-                    mode = .hibernate;
-                    hiber_mode = .suspend_hybrid;
-                },
-                else => fatal("bad arg\n"),
-            }
+    var help_iter = std.process.Args.iterate(init.args);
+    _ = help_iter.next();
+    while (help_iter.next()) |arg| {
+        if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
+            const help = helpText();
+            _ = linux.write(1, help.ptr, help.len);
+            return;
         }
     }
+    while (args_iter.next()) |arg| {
+        if (!parseArg(&selection, arg)) fatal("bad arg\n");
+    }
+    const mode = selection.mode;
+    const hiber_mode = selection.hibernate_mode;
 
     switch (mode) {
         .@"suspend" => if (!stateSupports("mem")) fatal("suspend not supported\n"),
@@ -159,4 +211,32 @@ pub fn main(init: std.process.Init.Minimal) void {
     runHooks("/etc/zzz.d/resume");
 
     _ = linux.write(1, "yawn.\n", 6);
+}
+
+test "examples parse without power effects" {
+    for (options, 0..) |option, i| {
+        for (options[0..i]) |previous| try std.testing.expect(previous.flag != option.flag);
+        var selection = Selection{ .mode = .@"suspend" };
+        try std.testing.expect(std.mem.startsWith(u8, option.example, "zzz "));
+        try std.testing.expect(parseArg(&selection, option.example[4..]));
+        try std.testing.expectEqual(option.mode, selection.mode);
+        try std.testing.expectEqual(option.hibernate_mode orelse .platform, selection.hibernate_mode);
+    }
+    var selection = Selection{ .mode = .@"suspend" };
+    try std.testing.expect(parseArg(&selection, "-RHZ"));
+    try std.testing.expectEqual(Mode.hibernate, selection.mode);
+    try std.testing.expectEqual(HibernateMode.suspend_hybrid, selection.hibernate_mode);
+    try std.testing.expect(!parseArg(&selection, "--bad"));
+}
+
+test "help contains options examples and one final footer" {
+    const help = helpText();
+    try std.testing.expect(std.mem.startsWith(u8, help, "Usage: zzz"));
+    try std.testing.expect(std.mem.indexOf(u8, help, "\nExamples:\n") != null);
+    for (options) |option| {
+        try std.testing.expect(std.mem.indexOf(u8, help, option.description) != null);
+        try std.testing.expect(std.mem.indexOf(u8, help, option.example) != null);
+    }
+    try std.testing.expect(std.mem.endsWith(u8, help, footer));
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, help, "Maintained by Joshua Li:"));
 }
