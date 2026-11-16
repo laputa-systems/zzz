@@ -213,7 +213,6 @@ pub fn main(init: std.process.Init.Minimal) void {
     _ = linux.write(1, "yawn.\n", 6);
 }
 
-
 test "examples parse without power effects" {
     for (options, 0..) |option, i| {
         for (options[0..i]) |previous| try std.testing.expect(previous.flag != option.flag);
