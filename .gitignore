@@ -1,2 +1,4 @@
 zzz
 
+.zig-cache/
+zig-out/
