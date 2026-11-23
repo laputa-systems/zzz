@@ -123,7 +123,7 @@ fn runHooks(dirpath: [*:0]const u8) void {
             if (d.type != linux.DT.REG and d.type != linux.DT.UNKNOWN) continue;
 
             var path_buf: [512]u8 = undefined;
-            const path = std.fmt.bufPrintZ(&path_buf, "{s}/{s}", .{ dirpath, name }) catch continue;
+            const path = std.mem.printSentinel(&path_buf, "{s}/{s}", .{ dirpath, name }, 0) catch continue;
 
             if (linux.access(path, linux.X_OK) != 0) continue;
 
@@ -133,7 +133,7 @@ fn runHooks(dirpath: [*:0]const u8) void {
                 linux.exit(1);
             }
             if (pid != ~@as(usize, 0)) {
-                var status: u32 = 0;
+                var status: i32 = 0;
                 _ = linux.wait4(@intCast(pid), &status, 0, null);
             }
         }

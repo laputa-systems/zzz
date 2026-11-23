@@ -18,12 +18,16 @@ defaults:
 jobs:
   lint:
     name: lint
-    runs-on: ubuntu-26.04-arm
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install Zig
+        run: |
+          curl -fsSL -o zig.tar.xz https://ziglang.org/download/0.17.1/zig-x86_64-linux-0.17.1.tar.xz && echo "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a  zig.tar.xz" | sha256sum -c - && tar xJf zig.tar.xz
+          echo "$PWD/zig-x86_64-linux-0.17.1" >> "$GITHUB_PATH"
       - name: lint
         run: make lint
