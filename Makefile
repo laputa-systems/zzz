@@ -8,7 +8,8 @@ zzz: zzz.zig
 PREFIX ?= /usr/local
 
 install: zzz
-	install -Dm 4755 $< $(DESTDIR)$(PREFIX)/bin/$<
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	install -m 4755 $< $(DESTDIR)$(PREFIX)/bin/$<
 
 clean:
 	rm -f zzz
